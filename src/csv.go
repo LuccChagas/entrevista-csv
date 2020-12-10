@@ -5,26 +5,89 @@ import (
 	"io/ioutil"
 	"log"
 	"strings"
+
+	"github.com/Nhanderu/brdoc"
 )
 
+type row struct {
+	CPF                  string
+	Private              bool
+	Incompleto           bool
+	DataDaUltimaCompra   string
+	TicketMedio          string
+	TicketDaUltimaCompra string
+	LojaMaisFrequente    string
+	LojaDaUltimaCompra   string
+}
+
 func main() {
-	rawRows, err := readFile("files/base_teste.txt")
+	data, err := parseData() //use
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	rows := []map[string]string{}
+}
+
+func parseData() ([]row, error) {
+	rawRows, err := readFile("files/base_teste.txt")
+	if err != nil {
+		return []row{}, err
+	}
+
+	rows := []row{}
 
 	for i := range rawRows[1:] {
-		row, err := splitRow(rawRows[i])
+
+		rawRow, err := splitRow(rawRows[i])
 		if err != nil {
 			log.Printf("splitRow[%05d] err: %v", i, err)
 			continue
 		}
-		rows = append(rows, row)
+
+		parsedRow, err := parseRow(rawRow)
+		if err != nil {
+			log.Printf("parseRow[%05d] err: %v", i, err)
+			continue
+		}
+		rows = append(rows, parsedRow)
 	}
 
-	log.Println("len(rows) ", len(rows))
+	return rows, nil
+}
+
+func parseRow(rawRow map[string]string) (parsedRow row, err error) {
+
+	if !brdoc.IsCPF(rawRow["CPF"]) {
+		err = fmt.Errorf("invalid CPF: %s", rawRow["CPF"])
+		return
+	}
+
+	if !brdoc.IsCNPJ(rawRow["LOJA MAIS FREQUÊNTE"]) {
+		err = fmt.Errorf("invalid CNPJ: %s", rawRow["LOJA MAIS FREQUÊNTE"])
+		return
+	}
+
+	if !brdoc.IsCNPJ(rawRow["LOJA DA ÚLTIMA COMPRA"]) {
+		err = fmt.Errorf("invalid CNPJ: %s", rawRow["LOJA DA ÚLTIMA COMPRA"])
+		return
+	}
+
+	parsedRow.CPF = rawRow["CPF"]
+	parsedRow.LojaMaisFrequente = rawRow["LOJA MAIS FREQUÊNTE"]
+
+	// boolean initial state
+	parsedRow.Private = false
+	parsedRow.Incompleto = false
+
+	if rawRow["PRIVATE"] == "1" {
+		parsedRow.Private = true
+	}
+
+	if rawRow["Incompleto"] == "1" {
+		parsedRow.Private = true
+	}
+
+	return
 }
 
 func readFile(path string) ([]string, error) {
@@ -36,20 +99,25 @@ func readFile(path string) ([]string, error) {
 }
 
 func splitRow(row string) (map[string]string, error) {
+
 	splitted := []string{}
+	header := rowHeader()
+	output := map[string]string{}
+
 	for _, item := range strings.Split(row, "  ") { //using two spaces to split the string
 		if len(item) == 0 {
 			continue
 		}
+		// isolate character if exists whitespaces
 		item = strings.TrimPrefix(item, " ")
 		item = strings.TrimSuffix(item, " ")
+
 		splitted = append(splitted, item)
 	}
-	header := rowHeader()
+
 	if len(splitted) != len(header) {
 		return map[string]string{}, fmt.Errorf("invalid row: %s", row)
 	}
-	output := map[string]string{}
 
 	for i := range splitted {
 		output[header[i]] = splitted[i]
