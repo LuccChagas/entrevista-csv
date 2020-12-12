@@ -1,51 +1,79 @@
 package challengeReport
 
 import (
+	"database/sql"
 	"fmt"
-	"log"
 
-	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 )
 
-type Database struct {
-	*sqlx.DB
+const (
+	host     = "localhost"
+	port     = 5432
+	user     = "postgres"
+	password = "secret"
+	dbname   = "postgres"
+)
+
+func NewPostgres() (db *sql.DB) {
+
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+		"password=%s dbname=%s sslmode=disable",
+		host, port, user, password, dbname)
+
+	db, err := sql.Open("postgres", psqlInfo)
+	if err != nil {
+		panic(err)
+	}
+	//defer db.Close()
+
+	err = db.Ping()
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Successfully connected!")
+	return db
+
 }
 
-func NewClient() (Database, error) {
-	// tenta a conexão e retorna diretamente um error em caso de falha
-	db := sqlx.MustConnect("postgres", "user=postgres dbname=postgres sslmode=disable")
+func creatTableReport() {
+	db := NewPostgres()
 
 	schema := `CREATE TABLE IF NOT EXISTS relatorios (
-		cpf VARCHAR(14) PRIMARY KEY,
-		private BOOLEAN,
-		incompleto BOOLEAN,
-		data_ultima_compra DATE,
-		ticket_medio DECIMAL(10,2),
-		ticket_ultima_compra DECIMAL(10,2),
+		id SERIAL PRIMARY KEY,
+		cpf VARCHAR(14),
+		private char(1),
+		incompleto char(1),
+		data_ultima_compra VARCHAR(14),
+		ticket_medio varchar(10),
+		ticket_ultima_compra varchar(10),
 		loja_mais_frequente VARCHAR(14),
 		loja_ultima_compra VARCHAR(14)
 	);`
 
-	// creates the relatorios table
-	output, err := db.Exec(schema)
-	if err != nil {
-		return Database{}, fmt.Errorf("db.Exec() create table: %v", err)
-	}
-	log.Println("return: ", output)
+	_, err := db.Exec(schema)
 
-	output, err = db.Exec("TRUNCATE TABLE relatorios")
 	if err != nil {
-		return Database{}, fmt.Errorf("db.Exec() truncate table: %v", err)
+		fmt.Errorf("db.Exec() create table: %v", err)
 	}
-	log.Println("return: ", output)
 
-	return Database{db}, nil
+	fmt.Println("Table created with success!")
+
+	_, err = db.Exec("TRUNCATE TABLE relatorios")
+	if err != nil {
+		fmt.Errorf("db.Exec() truncate table: %v", err)
+	}
+
+	fmt.Println("Table truncate Done!")
+	defer db.Close()
+
 }
 
-//InsertReport
-func (db *Database) InsertReport(r Row) {
-	q := `INSERT INTO relatorios VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
-	db.MustExec(
+func InsertReport(r Row, db *sql.DB) {
+
+	q := `INSERT INTO relatorios VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8)`
+	_, err := db.Exec(
 		q,
 		r.CPF,
 		r.Private,
@@ -56,4 +84,9 @@ func (db *Database) InsertReport(r Row) {
 		r.LojaMaisFrequente,
 		r.LojaDaUltimaCompra,
 	)
+	if err != nil {
+		panic(err)
+	}
+	defer fmt.Printf("row inserted! with success, cpf: %v \n", r.CPF)
+
 }
