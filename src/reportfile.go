@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"strconv"
 	"strings"
 
 	"github.com/Nhanderu/brdoc"
@@ -12,14 +11,14 @@ import (
 
 //Row structure for each line of the report
 type Row struct {
-	CPF                  string  `db:"cpf"`
-	Private              bool    `db:"private"`
-	Incompleto           bool    `db:"incompleto"`
-	DataDaUltimaCompra   string  `db:"data_ultima_compra"`
-	TicketMedio          float64 `db:"ticket_medio"`
-	TicketDaUltimaCompra float64 `db:"ticket_ultima_compra"`
-	LojaMaisFrequente    string  `db:"loja_mais_frequente"`
-	LojaDaUltimaCompra   string  `db:"loja_ultima_compra"`
+	CPF                  string `db:"cpf"`
+	Private              string `db:"private"`
+	Incompleto           string `db:"incompleto"`
+	DataDaUltimaCompra   string `db:"data_ultima_compra"`
+	TicketMedio          string `db:"ticket_medio"`
+	TicketDaUltimaCompra string `db:"ticket_ultima_compra"`
+	LojaMaisFrequente    string `db:"loja_mais_frequente"`
+	LojaDaUltimaCompra   string `db:"loja_ultima_compra"`
 }
 
 //ParseData calls all deals made in the file
@@ -30,11 +29,7 @@ func ParseData(path string) ([]Row, error) {
 	}
 
 	rows := []Row{}
-
-	db, err := NewClient()
-	if err != nil {
-		return []Row{}, err
-	}
+	db := NewPostgres()
 
 	for i := range rawRows[1:] {
 
@@ -51,7 +46,7 @@ func ParseData(path string) ([]Row, error) {
 		}
 		rows = append(rows, parsedRow)
 
-		db.InsertReport(parsedRow)
+		InsertReport(parsedRow, db)
 	}
 
 	return rows, nil
@@ -60,48 +55,44 @@ func ParseData(path string) ([]Row, error) {
 //Performs data validation on each type of item
 func parseRow(rawRow map[string]string) (parsedRow Row, err error) {
 
-	if !brdoc.IsCPF(rawRow["CPF"]) {
-		err = fmt.Errorf("invalid CPF: %s", rawRow["CPF"])
+	if !brdoc.IsCPF(rawRow["cpf"]) == true {
+		err = fmt.Errorf("invalid CPF: %s", rawRow["cpf"])
 		return
 	}
-	parsedRow.CPF = strings.Replace(rawRow["CPF"], ".", "", -1)
+	parsedRow.CPF = sanitize(rawRow["cpf"])
 
-	if !brdoc.IsCNPJ(rawRow["loja_mais_frequente"]) {
+	if !brdoc.IsCNPJ(rawRow["loja_mais_frequente"]) == true {
 		err = fmt.Errorf("invalid CNPJ: %s", rawRow["loja_mais_frequente"])
 		return
 	}
-	parsedRow.LojaMaisFrequente = strings.Replace(rawRow["loja_mais_frequente"], ".", "", -1)
 
-	if !brdoc.IsCNPJ(rawRow["loja_da_ultima_compra"]) {
+	parsedRow.LojaMaisFrequente = sanitize(rawRow["loja_mais_frequente"])
+
+	if !brdoc.IsCNPJ(rawRow["loja_da_ultima_compra"]) == true {
 		err = fmt.Errorf("invalid CNPJ: %s", rawRow["loja_da_ultima_compra"])
 		return
 	}
-	parsedRow.LojaDaUltimaCompra = strings.Replace(rawRow["loja_mais_frequente"], ".", "", -1)
+	parsedRow.LojaDaUltimaCompra = sanitize(rawRow["loja_da_ultima_compra"])
 
 	//Boolean initial state
-	parsedRow.Private = false
-	parsedRow.Incompleto = false
 
 	if rawRow["private"] == "1" {
-		parsedRow.Private = true
+		parsedRow.Private = "1"
+	} else {
+		parsedRow.Private = "0"
 	}
 
 	if rawRow["incompleto"] == "1" {
-		parsedRow.Private = true
+		parsedRow.Incompleto = "1"
+	} else {
+		parsedRow.Incompleto = "0"
 	}
 
-	var parsedFloat float64
-	parsedFloat, err = strconv.ParseFloat(rawRow["ticket_medio"], 64)
-	if err != nil {
-		return
-	}
-	parsedRow.TicketMedio = parsedFloat
+	parsedRow.TicketMedio = rawRow["ticket_medio"]
 
-	parsedFloat, err = strconv.ParseFloat(rawRow["ticket_ultima_compra"], 64)
-	if err != nil {
-		return
-	}
-	parsedRow.TicketDaUltimaCompra = parsedFloat
+	parsedRow.TicketDaUltimaCompra = rawRow["ticket_da_ultima_compra"]
+
+	parsedRow.DataDaUltimaCompra = rawRow["data_da_ultima_compra"]
 
 	return
 }
@@ -138,6 +129,7 @@ func splitRow(row string) (map[string]string, error) {
 	for i := range splitted {
 		output[header[i]] = splitted[i]
 	}
+
 	return output, nil
 }
 
@@ -152,4 +144,12 @@ func rowHeader() []string {
 		"loja_mais_frequente",
 		"loja_da_ultima_compra",
 	}
+}
+
+// Utils
+func sanitize(input string) string {
+	input = strings.Replace(input, ".", "", -1)
+	input = strings.Replace(input, "/", "", -1)
+	input = strings.Replace(input, "-", "", -1)
+	return input
 }
