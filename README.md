@@ -1,52 +1,49 @@
 # entrevista-csv
 
-tar -xf migrate.linux-amd64.tar.gz 
-sudo mv migrate.linux-amd64 /usr/local/bin/migrate
+Entrega de desafio proposto em processo seletivo NeoWay
 
-execute o comando de UP no adminer
+## Setup
 
-Requisitos:
+Para execução do projeto será necessario á instalação dos seguintes itens:
 
-- Criar um serviço em GO que receba um arquivo csv/txt de entrada (Arquivo Anexo)
+- Golang (https://golang.org/doc/install)
 
-- Este serviço deve persistir no banco de dados relacional (postgresql) todos os dados contidos no arquivo
+- Docker (https://docs.docker.com/get-docker/)
 
-  Obs: O arquivo não possui um separador muito convencional
+Após a instalação do Go & Docker será necessário realizar o pull da imagem referente ao postgres
 
- 
+```bash
+docker pull postgres
+```
 
-- Deve-se fazer o split dos dados em colunas no banco de dados
+Tendo as devidas instalações concluidas, basta executar os comandos **make** disponibilizados para facilitar a validação no processo seletivo. (Apontamentos realizados no arquivo **Makefile**)
 
- Obs: pode ser feito diretamente no serviço em GO ou em sql
+- Navegue até a pasta **/src** e execute os comandos:
+```bash
+# Executa o servidor postgres no Docker redirecionando com suas portas locais
+make postgres
 
- 
+# Executa o adminer localmente para que seja possivel visualizar os registros da tabela
+make adminer
 
-- Realizar higienização dos dados após persistência (sem acento, maiúsculo, etc)
+# Executa o programa solicitado no desáfio do processo seletivo
+make release
+```
+## Adminer
 
-- Validar os CPFs/CNPJs contidos (válidos e não válidos numericamente)
+- O item não havia sido solicitado, porém achei interessante incluir para facilitar a visualização dos dados no **Postgres**
+- O **Adminer** fica disponível em: http://localhost:8080/ durante a execução 
 
-- Todo o código deve estar disponível em repositório público do GIT
+Credenciais de Acesso:
 
- 
+```
+	host     = "localhost"
+	user     = "postgres"
+	password = "secret"
+	dbname   = "postgres"
+```
 
-Desejável:
-- Utilização das linguagen GOLANG para o desenvolvimento do serviço
-- Utilização do DB Postgres
+## Observações
 
-- Docker Compose , com orientações para executar (arquivo readme) 
+> Desde já, gostaria de agradecer a oportunidade de particiar do processo seletivo!
 
-Você será avaliado por:
-- Utilização de melhores práticas de desenvolvimento (nomenclatura, funções, classes, etc);
-- Utilização dos recursos mais recentes das linguagens;
-- Boa organização lógica e documental (readme, comentários, etc);
-- Cobertura de todos os requisitos obrigatórios.
-
-Nota:
-Todo a estrutura relacional deve estar documentada (criação das tabelas, etc)
-Criação de um arquivo README com as instruções de instalação juntamente com as etapas necessárias para configuração.
-Você pode escolher sua abordagem de arquitetura e solução técnica.
-Apresentar-nos apenas o link do Github com o projeto.
-
- 
-
-Gostaríamos que você nos enviasse o desafio em até 3 dias.
