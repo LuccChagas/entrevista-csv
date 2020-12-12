@@ -1,5 +1,10 @@
 # entrevista-csv
 
+tar -xf migrate.linux-amd64.tar.gz 
+sudo mv migrate.linux-amd64 /usr/local/bin/migrate
+
+execute o comando de UP no adminer
+
 Requisitos:
 
 - Criar um serviço em GO que receba um arquivo csv/txt de entrada (Arquivo Anexo)
