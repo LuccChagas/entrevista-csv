@@ -1,0 +1,19 @@
+version: '3.7'
+services:
+    postgres:
+        ports:
+            - '5432:5432'
+        environment:
+            - POSTGRES_PASSWORD=secret
+        image: postgres
+
+services:
+  app:
+    image: golang:1.10.4
+    container_name: go
+    volumes:
+      - "./src:/go/src/"
+    ports:
+      - "8080:8080"
+    working_dir: /go/src/
+    command: go test
